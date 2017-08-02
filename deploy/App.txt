@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Track Team Status</title>
+    <!--  (c) 2017 CA Technologies.  All Rights Reserved. -->
+    <!--  Build Date: Tue Aug 01 2017 00:54:51 GMT-0700 (PDT) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Tue Aug 01 2017 00:54:51 GMT-0700 (PDT)";
+        var STORY    = "US1651";
+        var BUILDER  = "rajan08";
+        var CHECKSUM = 59703775536;
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.1/sdk.js"></script>
+    <!-- our highcharts (needed so that we can add patterns) 
+    <script type="text/javascript" src="/apps/2.1/lib/analytics/analytics-all.js"></script>
+    -->
+    
+    
+    <script type="text/javascript">
+        Rally.onReady(function() {
+             
+/* FileSaver.js
+ *  A saveAs() FileSaver implementation.
+ *  2014-05-27
+ *
+ *  By Eli Grey, http://eligrey.com
+ *  License: X11/MIT
+ *    See https://github.com/eligrey/FileSaver.js/blob/master/LICENSE.md
+ */
+
+/*global self */
+/*jslint bitwise: true, indent: 4, laxbreak: true, laxcomma: true, smarttabs: true, plusplus: true */
+
+/*! @source http://purl.eligrey.com/github/FileSaver.js/blob/master/FileSaver.js */
+
+var saveAs = saveAs
+  // IE 10+ (native saveAs)
+  || (typeof navigator !== "undefined" &&
+      navigator.msSaveOrOpenBlob && navigator.msSaveOrOpenBlob.bind(navigator))
+  // Everyone else
+  || (function(view) {
+    "use strict";
+    // IE <10 is explicitly unsupported
+    if (typeof navigator !== "undefined" &&
+        /MSIE [1-9]\./.test(navigator.userAgent)) {
+        return;
+    }
+    var
+          doc = view.document
+          // only get URL when necessary in case Blob.js hasn't overridden it yet
+        , get_URL = function() {
+            return view.URL || view.webkitURL || view;
+        }
+        , save_link = doc.createElementNS("http://www.w3.org/1999/xhtml", "a")
+        , can_use_save_link = !view.externalHost && "download" in save_link
+        , click = function(node) {
+            var event = doc.createEvent("MouseEvents");
+            event.initMouseEvent(
+                "click", true, false, view, 0, 0, 0, 0, 0
+                , false, false, false, false, 0, null
+            );
+            node.dispatchEvent(event);
+        }
+        , webkit_req_fs = view.webkitRequestFileSystem
+        , req_fs = view.requestFileSystem || webkit_req_fs || view.mozRequestFileSystem
+        , throw_outside = function(ex) {
+            (view.setImmediate || view.setTimeout)(function() {
+                throw ex;
+            }, 0);
+        }
+        , force_saveable_type = "application/octet-stream"
+        , fs_min_size = 0
+        , deletion_queue = []
+        , process_deletion_queue = function() {
+            var i = deletion_queue.length;
+            while (i--) {
+                var file = deletion_queue[i];
+                if (typeof file === "string") { // file is an object URL
+                    get_URL().revokeObjectURL(file);
+                } else { // file is a File
+                    file.remove();
+                }
+            }
+            deletion_queue.length = 0; // clear queue
+        }
+        , dispatch = function(filesaver, event_types, event) {
+            event_types = [].concat(event_types);
+            var i = event_types.length;
+            while (i--) {
+                var listener = filesaver["on" + event_types[i]];
+                if (typeof listener === "function") {
+                    try {
+                        listener.call(filesaver, event || filesaver);
+                    } catch (ex) {
+                        throw_outside(ex);
+                    }
+                }
+            }
+        }
+        , FileSaver = function(blob, name) {
+            // First try a.download, then web filesystem, then object URLs
+            var
+                  filesaver = this
+                , type = blob.type
+                , blob_changed = false
+                , object_url
+                , target_view
+                , get_object_url = function() {
+                    var object_url = get_URL().createObjectURL(blob);
+                    deletion_queue.push(object_url);
+                    return object_url;
+                }
+                , dispatch_all = function() {
+                    dispatch(filesaver, "writestart progress write writeend".split(" "));
+                }
+                // on any filesys errors revert to saving with object URLs
+                , fs_error = function() {
+                    // don't create more object URLs than needed
+                    if (blob_changed || !object_url) {
+                        object_url = get_object_url(blob);
+                    }
+                    if (target_view) {
+                        target_view.location.href = object_url;
+                    } else {
+                        window.open(object_url, "_blank");
+                    }
+                    filesaver.readyState = filesaver.DONE;
+                    dispatch_all();
+                }
+                , abortable = function(func) {
+                    return function() {
+                        if (filesaver.readyState !== filesaver.DONE) {
+                            return func.apply(this, arguments);
+                        }
+                    };
+                }
+                , create_if_not_found = {create: true, exclusive: false}
+                , slice
+            ;
+            filesaver.readyState = filesaver.INIT;
+            if (!name) {
+                name = "download";
+            }
+            if (can_use_save_link) {
+                object_url = get_object_url(blob);
+                save_link.href = object_url;
+                save_link.download = name;
+                click(save_link);
+                filesaver.readyState = filesaver.DONE;
+                dispatch_all();
+                return;
+            }
+            // Object and web filesystem URLs have a problem saving in Google Chrome when
+            // viewed in a tab, so I force save with application/octet-stream
+            // http://code.google.com/p/chromium/issues/detail?id=91158
+            if (view.chrome && type && type !== force_saveable_type) {
+                slice = blob.slice || blob.webkitSlice;
+                blob = slice.call(blob, 0, blob.size, force_saveable_type);
+                blob_changed = true;
+            }
+            // Since I can't be sure that the guessed media type will trigger a download
+            // in WebKit, I append .download to the filename.
+            // https://bugs.webkit.org/show_bug.cgi?id=65440
+            if (webkit_req_fs && name !== "download") {
+                name += ".download";
+            }
+            if (type === force_saveable_type || webkit_req_fs) {
+                target_view = view;
+            }
+            if (!req_fs) {
+                fs_error();
+                return;
+            }
+            fs_min_size += blob.size;
+            req_fs(view.TEMPORARY, fs_min_size, abortable(function(fs) {
+                fs.root.getDirectory("saved", create_if_not_found, abortable(function(dir) {
+                    var save = function() {
+                        dir.getFile(name, create_if_not_found, abortable(function(file) {
+                            file.createWriter(abortable(function(writer) {
+                                writer.onwriteend = function(event) {
+                                    target_view.location.href = file.toURL();
+                                    deletion_queue.push(file);
+                                    filesaver.readyState = filesaver.DONE;
+                                    dispatch(filesaver, "writeend", event);
+                                };
+                                writer.onerror = function() {
+                                    var error = writer.error;
+                                    if (error.code !== error.ABORT_ERR) {
+                                        fs_error();
+                                    }
+                                };
+                                "writestart progress write abort".split(" ").forEach(function(event) {
+                                    writer["on" + event] = filesaver["on" + event];
+                                });
+                                writer.write(blob);
+                                filesaver.abort = function() {
+                                    writer.abort();
+                                    filesaver.readyState = filesaver.DONE;
+                                };
+                                filesaver.readyState = filesaver.WRITING;
+                            }), fs_error);
+                        }), fs_error);
+                    };
+                    dir.getFile(name, {create: false}, abortable(function(file) {
+                        // delete file if it already exists
+                        file.remove();
+                        save();
+                    }), abortable(function(ex) {
+                        if (ex.code === ex.NOT_FOUND_ERR) {
+                            save();
+                        } else {
+                            fs_error();
+                        }
+                    }));
+                }), fs_error);
+            }), fs_error);
+        }
+        , FS_proto = FileSaver.prototype
+        , saveAs = function(blob, name) {
+            return new FileSaver(blob, name);
+        }
+    ;
+    FS_proto.abort = function() {
+        var filesaver = this;
+        filesaver.readyState = filesaver.DONE;
+        dispatch(filesaver, "abort");
+    };
+    FS_proto.readyState = FS_proto.INIT = 0;
+    FS_proto.WRITING = 1;
+    FS_proto.DONE = 2;
+
+    FS_proto.error =
+    FS_proto.onwritestart =
+    FS_proto.onprogress =
+    FS_proto.onwrite =
+    FS_proto.onabort =
+    FS_proto.onerror =
+    FS_proto.onwriteend =
+        null;
+
+    view.addEventListener("unload", process_deletion_queue, false);
+    saveAs.unload = function() {
+        process_deletion_queue();
+        view.removeEventListener("unload", process_deletion_queue, false);
+    };
+    return saveAs;
+}(
+       typeof self !== "undefined" && self
+    || typeof window !== "undefined" && window
+    || this.content
+));
+// `self` is undefined in Firefox for Android content script context
+// while `this` is nsIContentFrameMessageManager
+// with an attribute `content` that corresponds to the window
+
+if (typeof module !== "undefined" && module !== null) {
+  module.exports = saveAs;
+} else if ((typeof define !== "undefined" && define !== null) && (define.amd != null)) {
+  define([], function() {
+    return saveAs;
+  });
+}
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+    
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+     
+    draggable: true,
+
+    autoShow: true,
+   
+    width: 350,
+    
+    informationalConfig: null,
+    
+    items: [{xtype:'container', itemId:'information' }],
+    
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+    
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/var BUILDER  = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+       
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+   
+        return chk;
+    },
+    
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    var stored_checksum = me._generateChecksum(text);
+                    if ( CHECKSUM !== stored_checksum ) {
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    _addToContainer: function(container){
+        var config = Ext.apply({
+            xtype:'container',
+            height: 200,
+            overflowY: true
+        }, this.informationalConfig);
+        
+        container.add(config);
+    },
+    
+    afterRender: function() {
+        var app = Rally.getApp();
+        
+        if ( !Ext.isEmpty( this.informationalConfig ) ) {
+            var container = this.down('#information');
+            this._addToContainer(container);
+            
+        }
+        
+        if (! app.isExternal() ) {
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            dock: 'bottom',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                },
+                failure: function(msg){
+                    console.log("oops:",msg);
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+    
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml,
+                doc: 'top'
+            });
+        }
+        
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            dock:'bottom',
+            html:"This app was created by the CA AC Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            var build_html = Ext.String.format("Built on: {0} <br/>Built by: {1}",
+                APP_BUILD_DATE,
+                BUILDER);
+                
+            if ( STORY ) {
+                build_html = build_html + "<br/>Source story: " + STORY;
+            }
+                
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                dock: 'bottom',
+                html: build_html
+            });
+        }
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+Ext.define('Rally.technicalservices.FileUtilities', {
+    singleton: true,
+    logger: new Rally.technicalservices.Logger(),
+    saveCSVToFile:function(csv,file_name,type_object){
+            if (type_object == undefined){
+                type_object = {type:'text/csv;charset=utf-8'};
+            }
+            var blob = new Blob([csv],type_object);
+            saveAs(blob,file_name);
+    },
+    saveTextAsFile: function(textToWrite, fileName) {
+        var textFileAsBlob = new Blob([textToWrite], {type:'text/plain'});
+        var fileNameToSaveAs = fileName;
+
+        var downloadLink = document.createElement("a");
+        downloadLink.download = fileNameToSaveAs;
+        downloadLink.innerHTML = "Download File";
+        if (window.webkitURL != null)
+        {
+            // Chrome allows the link to be clicked
+            // without actually adding it to the DOM.
+            downloadLink.href = window.webkitURL.createObjectURL(textFileAsBlob);
+        }
+        else
+        {
+            // Firefox requires the link to be added to the DOM
+            // before it can be clicked.
+            downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+            downloadLink.onclick = destroyClickedElement;
+            downloadLink.style.display = "none";
+            document.body.appendChild(downloadLink);
+        }
+        downloadLink.click();
+    },
+    destroyClickedElement: function(event)
+    {
+        document.body.removeChild(event.target);
+    },
+    convertDataArrayToCSVText: function(data_array, requestedFieldHash){
+       
+        var text = '';
+        Ext.each(Object.keys(requestedFieldHash), function(key){
+            text += requestedFieldHash[key] + ',';
+        });
+        text = text.replace(/,$/,'\n');
+        
+        Ext.each(data_array, function(d){
+            Ext.each(Object.keys(requestedFieldHash), function(key){
+                if (d[key]){
+                    if (typeof d[key] === 'object'){
+                        if (d[key].FormattedID) {
+                            text += Ext.String.format("\"{0}\",",d[key].FormattedID ); 
+                        } else if (d[key].Name) {
+                            text += Ext.String.format("\"{0}\",",d[key].Name );                    
+                        } else if (!isNaN(Date.parse(d[key]))){
+                            text += Ext.String.format("\"{0}\",",Rally.util.DateTime.formatWithDefaultDateTime(d[key]));
+                        }else {
+                            text += Ext.String.format("\"{0}\",",d[key].toString());
+                        }
+                    } else {
+                        text += Ext.String.format("\"{0}\",",d[key] );                    
+                    }
+                } else {
+                    text += ',';
+                }
+            },this);
+            text = text.replace(/,$/,'\n');
+        },this);
+        return text;
+    },
+    _getCSVFromWsapiBackedGrid: function(grid) {
+        var deferred = Ext.create('Deft.Deferred');
+        var store = Ext.create('Rally.data.wsapi.Store',{
+            fetch: grid.getStore().config.fetch,
+            filters: grid.getStore().config.filters,
+            model: grid.getStore().config.model,
+            limit:Infinity,
+            pageSize: Infinity
+
+        });
+        
+        var columns = grid.columns;
+        var headers = this._getHeadersFromGrid(grid);
+        var column_names = this._getColumnNamesFromGrid(grid);
+        
+        var record_count = grid.getStore().getTotalCount(),
+            page_size = grid.getStore().pageSize,
+            pages = Math.ceil(record_count/page_size),
+            promises = [];
+
+        for (var page = 1; page <= pages; page ++ ) {
+            promises.push(this.loadStorePage(grid, store, columns, page, pages));
+        }
+        Deft.Promise.all(promises).then({
+            success: function(csvs){
+                var csv = [];
+                csv.push('"' + headers.join('","') + '"');
+                _.each(csvs, function(c){
+                    _.each(c, function(line){
+                        csv.push(line);
+                    });
+                });
+                csv = csv.join('\r\n');
+                deferred.resolve(csv);
+                Rally.getApp().setLoading(false);
+            }
+        });
+        return deferred.promise;
+    },
+
+    // custom grid assumes there store is fully loaded
+    _getCSVFromCustomBackedGridWithPaging: function(grid) {
+        var deferred = Ext.create('Deft.Deferred');
+
+
+        var store = Ext.create('Rally.data.custom.Store',{
+            model: grid.getStore().config.model,
+            filters: grid.getStore().config.filters,
+            limit:Infinity,
+            pageSize: Infinity
+        });
+
+        var columns = grid.columns;
+        var headers = this._getHeadersFromGrid(grid);
+        var column_names = this._getColumnNamesFromGrid(grid);
+        
+        var record_count = grid.getStore().getTotalCount(),
+            page_size = grid.getStore().pageSize,
+            pages = Math.ceil(record_count/page_size),
+            promises = [];
+
+        // for (var page = 1; page <= pages; page ++ ) {
+        //     promises.push(this.loadStorePage(grid, store, columns, page, pages));
+        // }
+
+        promises.push(this.loadStorePage(grid, store, columns, page, pages));
+
+        Deft.Promise.all(promises).then({
+            success: function(csvs){
+                var csv = [];
+                csv.push('"' + headers.join('","') + '"');
+                _.each(csvs, function(c){
+                    _.each(c, function(line){
+                        csv.push(line);
+                    });
+                });
+                csv = csv.join('\r\n');
+                deferred.resolve(csv);
+                Rally.getApp().setLoading(false);
+            }
+        });
+        return deferred.promise;
+
+        // var headers = this._getHeadersFromGrid(grid);
+        
+        // var columns = grid.columns;
+        // var column_names = this._getColumnNamesFromGrid(grid);
+
+       
+        // var csv = [];
+        // csv.push('"' + headers.join('","') + '"');
+
+        // var number_of_records = store.getTotalCount();
+        
+        // this.logger.log("Number of records to export:", number_of_records);
+        
+        // for (var i = 0; i < number_of_records; i++) {
+        //     var record = store.getAt(i);
+        //     if ( ! record ) {
+        //         this.logger.log("Number or lines in CSV:", csv.length);
+        //         return csv.join('\r\n');            }
+        //     csv.push( this._getCSVFromRecord(record, grid, store) );
+        // }
+        
+        // this.logger.log("Number or lines in CSV:", csv.length);
+        // return csv.join('\r\n');
+    },
+
+    
+    // custom grid assumes there store is fully loaded
+    _getCSVFromCustomBackedGrid: function(grid) {
+    var deferred = Ext.create('Deft.Deferred');
+            var me = this;
+            
+            Rally.getApp().setLoading("Assembling data for export...");
+            
+            var headers = this._getHeadersFromGrid(grid);
+            var store = Ext.clone( grid.getStore() );
+            var columns = grid.columns;
+            var column_names = this._getColumnNamesFromGrid(grid);
+            
+            var record_count = grid.getStore().getTotalCount();
+            var original_page_size = grid.getStore().pageSize;
+            
+            var page_size = 20000;
+            var number_of_pages = Math.ceil(record_count/page_size);
+            store.pageSize = page_size;
+            
+            var pages = [],
+                promises = [];
+
+            for (var page = 1; page <= number_of_pages; page ++ ) {
+                pages.push(page);
+            }
+            
+            Ext.Array.each(pages, function(page) {
+                promises.push(function() { 
+                    return me._loadStorePage(grid, store, columns, page, pages.length )
+                });
+            });
+            
+            Deft.Chain.sequence(promises).then({
+                success: function(csvs){
+
+                    // set page back to last view
+                    store.pageSize = original_page_size;
+                    store.loadPage(1);
+                    
+                    var csv = [];
+                    csv.push('"' + headers.join('","') + '"');
+                    _.each(csvs, function(c){
+                        _.each(c, function(line){
+                            csv.push(line);
+                        });
+                    });
+                    csv = csv.join('\r\n');
+                    deferred.resolve(csv);
+                    Rally.getApp().setLoading(false);
+                }
+            });
+            
+            return deferred.promise;
+    },
+    
+
+
+    _loadStorePage: function(grid, store, columns, page, total_pages){
+        var deferred = Ext.create('Deft.Deferred');
+
+        store.loadPage(page, {
+            callback: function (records) {
+                var csv = [];
+                for (var i = 0; i < records.length; i++) {
+                    // if(i==0){
+                    //     Rally.getApp().setLoading("Loading page "+page+ " of "+total_pages);
+                    // }
+                    var record = records[i];
+                    csv.push( this._getCSVFromRecord(record, grid, store) );
+                }
+                deferred.resolve(csv);
+            },
+            scope: this
+        });
+        this.logger.log("_loadStorePage", page, " of ", total_pages);
+        return deferred.promise;
+    },
+
+
+    _getHeadersFromGrid: function(grid) {
+        var headers = [];        
+        var columns = grid.columns;
+
+        Ext.Array.each(columns,function(column){
+            if ( column.dataIndex || column.renderer ) {
+                if ( column.csvText ) {
+                    headers.push(column.csvText.replace('&nbsp;',' '));
+                } else if ( column.text )  {
+                    headers.push(column.text.replace('&nbsp;',' '));
+                }
+            }
+        });
+        
+        return headers;
+    },
+    
+    _getColumnNamesFromGrid: function(grid) {
+        var names = [];
+        var columns = grid.columns;
+
+        Ext.Array.each(columns,function(column){
+            if ( column.dataIndex || column.renderer ) {
+                names.push(column.dataIndex);
+            }
+        });
+        
+        return names;
+    },
+    /*
+     * will render using your grid renderer.  If you want it to ignore the grid renderer, 
+     * have the column set _csvIgnoreRender: true
+     */
+    getCSVFromGrid:function(app, grid){
+        this.logger.log("Exporting grid with store type:", Ext.getClassName(grid.getStore()));
+        
+        if ( Ext.getClassName(grid.getStore()) != "Rally.data.custom.Store" ) {
+            return this._getCSVFromWsapiBackedGrid(grid);
+        }
+        
+        return this._getCSVFromCustomBackedGrid(grid);
+    },
+
+    loadStorePage: function(grid, store, columns, page, total_pages){
+        console.log('Inside loadStorePage');
+        var deferred = Ext.create('Deft.Deferred');
+        this.logger.log('loadStorePage',page, total_pages);
+
+        store.loadPage(page, {
+            callback: function (records, operation, success) {
+                //console.log(' page records length',records.length,'success',success);
+                var csv = [];
+                Rally.getApp().setLoading(Ext.String.format('Page {0} of {1} loaded',page, total_pages));
+                for (var i = 0; i < records.length; i++) {
+                    var record = records[i];
+                    csv.push( this._getCSVFromRecord(record, grid, store) );
+                }
+                deferred.resolve(csv);
+            },
+            scope: this
+        });
+        return deferred;
+    },
+    
+    _getCSVFromRecord: function(record, grid, store) {
+        var mock_meta_data = {
+            align: "right",
+            classes: [],
+            cellIndex: 9,
+            column: null,
+            columnIndex: 9,
+            innerCls: undefined,
+            recordIndex: 5,
+            rowIndex: 5,
+            style: "",
+            tdAttr: "",
+            tdCls: "x-grid-cell x-grid-td x-grid-cell-headerId-gridcolumn-1029 x-grid-cell-last x-unselectable",
+            unselectableAttr: "unselectable='on'"
+        };
+        
+        var node_values = [];
+        var columns = grid.columns;
+        //console.log('inside _getCSVFromRecord');
+        Ext.Array.each(columns, function (column) {
+            if (column.xtype != 'rallyrowactioncolumn') {
+                if (column.dataIndex) {
+                    var column_name = column.dataIndex;
+                    
+                    var display_value = record.get(column_name);
+
+                    if (!column._csvIgnoreRender && column.renderer) {
+                        if (column.exportRenderer) {
+                            display_value = column.exportRenderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                        } else {
+                            display_value = column.renderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                        }
+                    }
+                    node_values.push(display_value);
+                } else {
+                    var display_value = null;
+                    if (!column._csvIgnoreRender && column.renderer) {
+                        if (column.exportRenderer) {
+                            display_value = column.exportRenderer(display_value, mock_meta_data, record, record, 0, 0, store, grid.getView());
+                        } else {
+                            display_value = column.renderer(display_value, mock_meta_data, record, record, 0, 0, store, grid.getView());
+                        }
+                        node_values.push(display_value);
+                    }
+                }
+
+            }
+        }, this);
+        //console.log('Node values',node_values);
+        return '"' + node_values.join('","') + '"';
+    }
+
+});
+Ext.define('TSModel', {
+    extend: 'Ext.data.Model',
+    fields: [
+        { name: 'User', type:'string' },
+        { name: 'Team', type:'string' },
+        { name: 'FormattedID', type:'string' },
+        { name: 'Name', type:'string' },
+        { name: 'WorkProduct', type:'string' },
+        { name: 'WorkProductID', type:'string' },
+        { name: 'State', type:'string' },
+        { name: 'PercentageUsedEstimate', type:'number' },
+        { name: 'PercentageUsedToDo', type:'number' },
+        { name: 'Capacity', type:'number' },
+        { name: 'Estimate', type:'number' },
+        { name: 'ToDo', type:'number' },
+        { name: 'Actuals', type:'number' },
+        { name: 'PercentageUsedActuals', type: 'number'}
+    ]
+});
+
+Ext.define("TSApp", {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+    logger: new Rally.technicalservices.Logger(),
+    defaults: { margin: 10 },
+    items: [
+        {xtype:'container',itemId:'selector_box', layout:'hbox', padding: 10},
+        {xtype:'container',itemId:'display_box'}
+    ],
+
+    integrationHeaders : {
+        name : "TSApp"
+    },
+    
+    config: {
+        defaultSettings: {
+            selectorType: ''    
+        }
+    },                    
+
+    getSettingsFields: function() {
+        var me = this;
+        var settings = [{
+                name: 'showActuals',
+                xtype: 'rallycheckboxfield',
+                boxLabelAlign: 'after',
+                fieldLabel: '',
+                margin: '0 0 25 25',
+                boxLabel: 'Show Actuals on Grid'
+            }
+            // ,
+            // {
+            //     name: 'showColorCodes',
+            //     xtype: 'rallycheckboxfield',
+            //     boxLabelAlign: 'after',
+            //     fieldLabel: '',
+            //     margin: '0 0 25 25',
+            //     boxLabel: 'Show Color coding on Grid'
+            // }            
+            ];
+        return settings;
+    },
+
+
+    launch: function() {
+        var me = this;
+        me._addSelector();
+    },
+      
+    _addSelector: function() {
+        var me = this;
+        var selector_box = this.down('#selector_box');
+        selector_box.removeAll();
+        selector_box.add({
+            xtype:'rallyiterationcombobox',
+            fieldLabel: 'Iteration:',
+            width:500,
+            margin:10,
+            showArrows : false,
+            context : this.getContext(),
+            growToLongestValue : true,
+            defaultToCurrentTimebox : true,
+            listeners: {
+                scope: me,
+                change: function(icb) {
+                    me.iteration = icb;
+                    me._queryAndDisplayGrid();
+
+                }
+            }
+        });
+
+         selector_box.add({
+            xtype:'rallybutton',
+            itemId:'export_button',
+            text: 'Download CSV',
+            margin:10,
+
+            disabled: false,
+            iconAlign: 'right',
+            listeners: {
+                scope: me,
+                click: function() {
+                    me._export();
+                }
+            },
+            margin: '10',
+            scope: me
+        });
+
+    },      
+
+    _queryAndDisplayGrid: function(){
+        var me = this;
+        me.setLoading("Loading");
+
+        var iteration_name = me.iteration.rawValue;
+
+        var task_filters = [{property:'Iteration.Name',value: iteration_name}];
+
+
+        var task_config = {
+            model: 'Task',
+            fetch: ['ObjectID','FormattedID','Name','Project','State','Owner','WorkProduct','ToDo','Estimate','Actuals','Iteration','UserIterationCapacities','DisplayName',"FirstName",'LastName'],
+            filters: task_filters,
+            context: {
+                projectScopeUp: false
+                ,
+                project:null
+            },
+            compact: false,
+            limit: 'Infinity'
+        };
+
+        var uic_config = {
+            model: 'UserIterationCapacity',
+            fetch: ['ObjectID','FormattedID','Name','Project','Iteration','Capacity','User','DisplayName',"FirstName",'LastName'],
+            filters: task_filters,
+            context: {
+                projectScopeUp: false
+                ,
+                project:null
+            },
+            compact: false,
+            limit: 'Infinity'
+        };
+
+        Deft.Promise.all([me._loadAStoreWithAPromise(task_config),me._loadAStoreWithAPromise(uic_config)],me).then({
+            scope: me,
+            success: function(results) {
+                
+                // //process results to create a custom grid. 
+
+                // var tasks = [];
+                // //var hash = {},
+                // var totalCapacity = 0;
+                // var totalEstimate = 0;
+                // var totalToDo = 0;
+                // var totalActuals = 0;
+                // // me.logger.log('uic',results[1]);
+
+                // var uic_hash = {};
+                // //var teamExists = null;
+                // Ext.Array.each(results[1],function(uic){
+                //     var userName = uic.get('User')  ? ((uic.get('User').FirstName ? uic.get('User').FirstName : "" ) + " " + (uic.get('User').LastName ? uic.get('User').LastName.slice(0,1) : "" )) : "No Owner Entry";
+                //     if(" "==userName){
+                //         userName = uic.get('User')._refObjectName;
+                //     }                    
+
+                //     totalCapacity += uic.get('Capacity');
+                //     if(uic_hash[uic.get('Project').Name]){
+                //         uic_hash[uic.get('Project').Name].Users.push({
+                //                                                         User: userName,
+                //                                                         children:[],
+                //                                                         Capacity: uic.get('Capacity'),
+                //                                                         Estimate: 0,
+                //                                                         ToDo: 0,
+                //                                                         Actuals: 0,
+                //                                                         PercentageUsedEstimate: 0,
+                //                                                         PercentageUsedToDo: 0,
+                //                                                         PercentageUsedActuals: 0
+                //                                                     });
+                //     }else{
+                //         uic_hash[uic.get('Project').Name] = {
+                //             Team: uic.get('Project').Name,
+                //             ObjectID: uic.get('Project').ObjectID,
+                //             Users: [{
+                //                         User: userName,
+                //                         children:[],
+                //                         Capacity: uic.get('Capacity'),
+                //                         Estimate: 0,
+                //                         ToDo: 0,
+                //                         Actuals: 0,
+                //                         PercentageUsedEstimate: 0,
+                //                         PercentageUsedToDo: 0,
+                //                         PercentageUsedActuals: 0
+                //                     }]
+                //         };
+                //     }
+
+
+                // });
+
+                // me.uic_hash = uic_hash;
+                // // me.logger.log('uic_hash',uic_hash);
+
+                // Ext.Array.each(Ext.Object.getKeys(uic_hash),function(team){
+                //     tasks.push({
+                //         Team: team,
+                //         children: me.uic_hash[team].Users,
+                //         Capacity: 0,
+                //         Estimate: 0,
+                //         ToDo: 0,
+                //         Actuals: 0,
+                //         PercentageUsedEstimate: 0,
+                //         PercentageUsedToDo: 0,
+                //         PercentageUsedActuals: 0
+                //     });
+                // });
+
+                //process results to create a custom grid. 
+
+                var tasks = [];
+                //var hash = {},
+                var totalCapacity = 0;
+                var totalEstimate = 0;
+                var totalToDo = 0;
+                var totalActuals = 0;
+                // me.logger.log('uic',results[1]);
+
+                var uic_hash = {};
+                //var teamExists = null;
+                Ext.Array.each(results[1],function(uic){
+                    var userName = uic.get('User')  ? ((uic.get('User').FirstName ? uic.get('User').FirstName : "" ) + " " + (uic.get('User').LastName ? uic.get('User').LastName.slice(0,1) : "" )) : "No Owner Entry";
+                    if(" "==userName){
+                        userName = uic.get('User')._refObjectName;
+                    }                    
+
+                    totalCapacity += uic.get('Capacity');
+                    if(uic_hash[userName]){
+                        uic_hash[userName].Projects.push({
+                                                                        Project: uic.get('Project').Name,
+                                                                        children:[],
+                                                                        Capacity: uic.get('Capacity'),
+                                                                        Estimate: 0,
+                                                                        ToDo: 0,
+                                                                        Actuals: 0,
+                                                                        PercentageUsedEstimate: 0,
+                                                                        PercentageUsedToDo: 0,
+                                                                        PercentageUsedActuals: 0
+                                                                    });
+                    }else{
+                        uic_hash[userName] = {
+                            User: userName,
+                            ObjectID: uic.get('User').ObjectID,
+                            Projects: [{
+                                        Project: uic.get('Project').Name,
+                                        children:[],
+                                        Capacity: uic.get('Capacity'),
+                                        Estimate: 0,
+                                        ToDo: 0,
+                                        Actuals: 0,
+                                        PercentageUsedEstimate: 0,
+                                        PercentageUsedToDo: 0,
+                                        PercentageUsedActuals: 0
+                                    }]
+                        };
+                    }
+
+
+                });
+
+                me.uic_hash = uic_hash;
+                // me.logger.log('uic_hash',uic_hash);
+
+                Ext.Array.each(Ext.Object.getKeys(uic_hash),function(user){
+                    tasks.push({
+                        User: user,
+                        children: me.uic_hash[user].Projects,
+                        Capacity: 0,
+                        Estimate: 0,
+                        ToDo: 0,
+                        Actuals: 0,
+                        PercentageUsedEstimate: 0,
+                        PercentageUsedToDo: 0,
+                        PercentageUsedActuals: 0
+                    });
+                });
+
+
+
+                Ext.Array.each(results[0],function(task){
+
+                    totalToDo = totalToDo + (task.get('ToDo') > 0 ? task.get('ToDo'):0);
+                    totalEstimate = totalEstimate + (task.get('Estimate') > 0 ? task.get('Estimate'):0);
+                    totalActuals = totalActuals + (task.get('Actuals') > 0 ? task.get('Actuals'):0);
+                    var userName = task.get('Owner')  ? ((task.get('Owner').FirstName ? task.get('Owner').FirstName : "" ) + " " + (task.get('Owner').LastName ? task.get('Owner').LastName.slice(0,1) : "" )) : "No Owner Entry";
+                    if(" "==userName){
+                        userName = task.get('Owner')._refObjectName;
+                    }
+                    var capacity = 0;
+                    Ext.Array.each(results[1],function(uic){
+                        var task_oid = task.get('Owner') && task.get('Owner').ObjectID ? task.get('Owner').ObjectID:null;
+                        var iteration_oid = task.get('Iteration') && task.get('Iteration').ObjectID ? task.get('Iteration').ObjectID:null;
+                        if(task_oid == uic.get('User').ObjectID && iteration_oid == uic.get('Iteration').ObjectID){
+                            capacity = uic.get('Capacity') ? uic.get('Capacity') : 0;
+                        }
+                    },me);
+
+                    var userExists = null;
+                    userExists = Ext.Array.filter(tasks, function(item) {
+                        var teamExists = null;
+
+                    var userName = task.get('Owner')  ? ((task.get('Owner').FirstName ? task.get('Owner').FirstName : "" ) + " " + (task.get('Owner').LastName ? task.get('Owner').LastName.slice(0,1) : "" )) : "No Owner Entry";
+                    if(" "==userName){
+                        userName = task.get('Owner')._refObjectName;
+                    }
+
+                        if(item.User == userName){
+
+                            teamExists = Ext.Array.filter(item.children, function(child) {
+                                if(child.Team == task.get('Project').Name){
+                                    child.children.push(me._getLeafNode(task));
+                                    child.Estimate += task.get('Estimate');
+                                    child.ToDo += task.get('ToDo');
+                                    child.Actuals += task.get('Actuals');                                    
+                                    child.Capacity = capacity;
+                                    child.PercentageUsedEstimate = me._getPercentage(child.Estimate,capacity);
+                                    child.PercentageUsedToDo = me._getPercentage(child.ToDo,capacity);
+                                    child.PercentageUsedActuals = me._getPercentage(child.Actuals,capacity);
+                                    return true;       
+                                }
+                            },me);
+
+                            if(teamExists.length < 1){
+                                item.children.push({
+                                    Team: task.get('Project').Name,
+                                    children: [me._getLeafNode(task)],
+                                    Capacity: capacity,
+                                    Estimate: task.get('Estimate'),
+                                    ToDo: task.get('ToDo'),
+                                    Actuals: task.get('Actuals'),
+                                    PercentageUsedEstimate: me._getPercentage(task.get('Estimate'),capacity),
+                                    PercentageUsedToDo: me._getPercentage(task.get('ToDo'),capacity),
+                                    PercentageUsedActuals: me._getPercentage(task.get('Actuals'),capacity)
+                                });
+                            }
+                            item.Estimate += task.get('Estimate');
+                            item.ToDo += task.get('ToDo');
+                            item.Actuals += task.get('Actuals');                          
+                            item.Capacity = 0;
+                            item.PercentageUsedEstimate = me._getPercentage(item.Estimate,item.Capacity); 
+                            item.PercentageUsedToDo = me._getPercentage(item.ToDo,item.Capacity);
+                            item.PercentageUsedActuals = me._getPercentage(item.Actuals,item.Capacity);
+                            return true;                          
+                        }
+                    },me);
+
+                    if(userExists.length < 1){
+
+                        Ext.Array.each(me.uic_hash[userName].Projects,function(project){
+                            if(project.Project == task.get('Project').Name){
+                                project.children.push(me._getLeafNode(task));
+                                project.Capacity = capacity;
+                                project.Estimate = task.get('Estimate');
+                                project.ToDo = task.get('ToDo');
+                                project.Actuals = task.get('Actuals');
+                                project.PercentageUsedEstimate = me._getPercentage(task.get('Estimate'),capacity);
+                                project.PercentageUsedToDo = me._getPercentage(task.get('ToDo'),capacity);
+                                project.PercentageUsedActuals = me._getPercentage(task.get('Actuals'),capacity);
+                            }
+                        })
+                        task = {
+                            User: userName,
+                            children: me.uic_hash[userName].Projects,
+                            Capacity: 0,
+                            Estimate: task.get('Estimate'),
+                            ToDo: task.get('ToDo'),
+                            Actuals: task.get('Actuals'),
+                            PercentageUsedEstimate: me._getPercentage(task.get('Estimate'),capacity),                            
+                            PercentageUsedToDo: me._getPercentage(task.get('ToDo'),capacity),                      
+                            PercentageUsedActuals: me._getPercentage(task.get('Actuals'),capacity)                      
+                        }    
+                        tasks.push(task);                    
+                    }
+
+                });
+
+                Ext.Array.each(tasks,function(team){
+                    var team_capacity = 0;
+                    Ext.Array.each(team.children,function(user){
+                        team_capacity += user.Capacity;
+                    })
+                    team.PercentageUsedEstimate = me._getPercentage(team.Estimate,team_capacity);
+                    team.PercentageUsedToDo = me._getPercentage(team.ToDo,team_capacity);
+                    team.PercentageUsedActuals = me._getPercentage(team.Actuals,team_capacity);
+                    team.Capacity = team_capacity;
+                });
+
+                me.topProject = "All - Totals";
+
+                me.tasks = tasks;
+
+                console.log('Tasks>',me.tasks);
+
+                me._create_csv(totalCapacity,totalEstimate, totalToDo, totalActuals );
+                
+                var store = Ext.create('Ext.data.TreeStore', {
+                                model: 'TSModel',
+                                root: {
+                                    expanded: true,
+                                    Team: me.topProject,
+                                    children: tasks,
+                                    Capacity: totalCapacity,
+                                    Estimate: totalEstimate,
+                                    ToDo: totalToDo,
+                                    Actuals: totalActuals,
+                                    PercentageUsedEstimate: me._getPercentage(totalEstimate,totalCapacity),                                               
+                                    PercentageUsedToDo: me._getPercentage(totalToDo,totalCapacity),
+                                    PercentageUsedActuals: me._getPercentage(totalActuals,totalCapacity)                                  
+                                },
+                                sorters:[{
+                                    property:'PercentageUsedEstimate',
+                                    direction:'DESC'
+                                }]
+                            });
+
+                me._displayGridNew(store);
+                me.setLoading(false);                
+            },
+            failure: function(error_message){
+                alert(error_message);
+            }
+        }).always(function() {
+            me.setLoading(false);
+        });
+
+    },
+
+    _getLeafNode:function(task){
+        return {                    
+                    Name: task.get('Name'),
+                    FormattedID: task.get('FormattedID'),
+                    WorkProduct: task.get('WorkProduct').Name,
+                    WorkProductID: task.get('WorkProduct').FormattedID,
+                    State: task.get('State'),
+                    Estimate: task.get('Estimate'),
+                    ToDo: task.get('ToDo'),
+                    Actuals: task.get('Actuals'),
+                    leaf: true
+                }
+    },
+
+
+    _getPercentage: function(value,capacity){
+        var result = 0;
+        if(capacity > 0){
+            result = Math.round((value/capacity)*100);
+        }
+        return result;
+    },
+
+    //hash = {"Team": { project, Users: [User:{Name: name,Tasks:[task1,task2] }]}} :TODO
+
+    _loadAStoreWithAPromise: function(config){
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        //this.logger.log("Starting load:",model_name,model_fields);
+          
+        Ext.create('Rally.data.wsapi.Store', config).load({
+            callback : function(records, operation, successful) {
+                if (successful){
+                    deferred.resolve(records);                        
+                } else {
+                    me.logger.log("Failed: ", operation);
+                    deferred.reject('Problem loading: ' + operation.error.errors.join('. '));
+                }
+            }
+        });
+        return deferred.promise;
+    },
+
+     _displayGridNew: function(store){
+        var me = this
+        me.down('#display_box').removeAll();
+
+        var grid = {
+            xtype:'treepanel',
+            itemId: 'teamTreeGrid',
+            store: store,
+            cls: 'rally-grid',
+            columns: me._getColumns(),
+            scroll: true,
+            autoScroll:true,
+            style: {
+                 "border": '1px solid black'
+            },
+            rootVisible: true
+        };
+
+        me.down('#display_box').add(grid);
+        me.down('#teamTreeGrid').expandAll();
+    },
+
+    _getColumns: function(){
+        var me = this;
+        var columns =  [
+                        {
+                            xtype:'treecolumn',
+                            text: 'Team', 
+                            dataIndex: 'Team',
+                            flex: 3
+                        },
+                        {
+                            text: 'User', 
+                            dataIndex: 'User',
+                            flex: 3
+                        },
+                        {
+                            text: 'US ID', 
+                            dataIndex: 'WorkProductID',
+                            flex: 1
+                        },
+                        {
+                            text: 'US Name', 
+                            dataIndex: 'WorkProduct',
+                            flex: 3
+                        },                        {
+                            text: 'Task ID', 
+                            dataIndex: 'FormattedID',
+                            flex: 1
+                        },
+                        {
+                            text: 'Task Name', 
+                            dataIndex: 'Name',
+                            flex: 3
+                        },
+                        {
+                            text: 'Task State', 
+                            dataIndex: 'State',
+                            flex: 2
+                        },
+                        {
+                            text: 'Capacity',
+                            dataIndex:'Capacity',
+                            renderer: function(Capacity,metaData,record){
+                                if(record.get('Team') == me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
+                                }                                
+                                if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
+                                }
+                                if(record.get('User')!=""){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
+                                }
+                                if(record.get('leaf')){
+                                    return ""
+                                }else{
+                                    return Capacity //> 0 ? Capacity:"";
+                                }
+                            },
+                            flex: 1                        
+                        },
+                        {
+                            text: 'Estimate',
+                            dataIndex: 'Estimate',
+                            renderer: function(Estimate,metaData,record){
+                                if(record.get('Team') == me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
+                                }                                
+                                if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
+                                }
+                                if(record.get('User')!=""){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
+                                }                                   
+                                return Estimate // > 0 ? Estimate:"";
+                            },
+                            flex: 1
+                        },
+                        {
+                            text: 'To Do',
+                            dataIndex: 'ToDo',
+                            renderer: function(ToDo,metaData,record){
+                                if(record.get('Team') == me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
+                                }                                
+                                if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
+                                }
+                                if(record.get('User')!=""){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
+                                }                                   
+                                return ToDo //> 0 ? ToDo:0;
+                            },
+                            flex: 1
+                        },{
+                            text: '% Used <BR>(Estimate)',
+                            dataIndex: 'PercentageUsedEstimate',
+                            renderer: function(PercentageUsedEstimate,metaData,record){
+                                if(record.get('Team') == me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
+                                }                                
+                                if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
+                                }
+                                if(record.get('User')!=""){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
+                                }                              
+                                return PercentageUsedEstimate + '%';
+                            },
+                            flex: 1
+                        },
+                        {
+                            text: '% Used <BR>(To Do)',
+                            dataIndex: 'PercentageUsedToDo',
+                            renderer: function(PercentageUsedToDo,metaData,record){
+                                if(record.get('Team') == me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
+                                }                                
+                                if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
+                                }
+                                if(record.get('User')!=""){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
+                                }                              
+                                return PercentageUsedToDo  + '%';
+                            },
+                            flex: 1
+                        }
+            ];
+
+            if(me.getSetting('showActuals')){
+                columns.push({
+                    text: 'Actuals',
+                    dataIndex: 'Actuals',
+                    renderer: function(Actuals,metaData,record){
+                        if(record.get('Team') == me.context.getProject().Name ){
+                            metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
+                        }                                
+                        if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
+                            metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
+                        }
+                        if(record.get('User')!=""){
+                            metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
+                        }                                   
+                        return Actuals //> 0 ? ToDo:0;
+                    },
+                    flex: 1
+                });
+
+                columns.push({
+                            text: '% Used <BR>(Actuals)',
+                            dataIndex: 'PercentageUsedActuals',
+                            renderer: function(PercentageUsedActuals,metaData,record){
+                                if(record.get('Team') == me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
+                                }                                
+                                if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
+                                }
+                                if(record.get('User')!=""){
+                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
+                                }                              
+                                return PercentageUsedActuals  + '%';
+                            },
+                            flex: 1
+                        });
+            }
+
+            return columns;
+    },
+
+
+    _export: function(){
+        var me = this;
+        if ( !me.tasks ) { return; }
+        
+        var filename = Ext.String.format('team_status_by_team.csv');
+
+        Rally.technicalservices.FileUtilities.saveCSVToFile(me.CSV,filename);
+    },
+
+    _create_csv: function(totalCapacity,totalEstimate, totalToDo, totalActuals){
+        var me = this;
+
+        totals = {
+            Team: me.topProject,
+            Capacity: totalCapacity,
+            Estimate: totalEstimate,
+            ToDo: totalToDo,
+            Actuals: totalActuals,
+            PercentageUsedEstimate: me._getPercentage(totalEstimate,totalCapacity),
+            PercentageUsedToDo: me._getPercentage(totalToDo,totalCapacity),
+            PercentageUsedActuals: me._getPercentage(totalActuals,totalCapacity)                                              
+        }
+
+        if ( !me.tasks ) { return; }
+        
+        me.setLoading("Generating CSV");
+
+        var CSV = "";    
+        var row = "";
+        // Add the column headers
+        var columns = [];
+        Ext.Array.each(me._getColumns(),function(col){
+            row += col.text.replace("<BR>","") + ',';
+            columns.push(col.dataIndex);
+        })
+
+        CSV += row + '\r\n';
+
+        //Write the totals row.
+        row = "";
+
+        Ext.Array.each(columns,function(col){
+            row += totals[col] ? totals[col] + ',':',';
+        },me)
+        CSV += row + '\r\n';
+        // Loop through tasks hash and create the csv 
+        Ext.Array.each(me.tasks,function(task){
+            row = "";
+            Ext.Array.each(columns,function(col){
+                row += task[col] ? task[col] + ',':',';
+            },me)
+            CSV += row + '\r\n';
+
+            if(task.children && task.children.length > 0){
+                Ext.Array.each(task.children,function(child){
+                    row = "";
+                    Ext.Array.each(columns,function(col){
+                        row += child[col] ? child[col] + ',':',';
+                    },me)
+                    CSV += row + '\r\n';
+
+                    if(child.children && child.children.length > 0){
+                        Ext.Array.each(child.children,function(gchild){
+                            row = "";
+                            Ext.Array.each(columns,function(col){
+                                if(col == "Name" || col == "WorkProduct"){
+                                    row += gchild[col] ? '"' + gchild[col].replace(/"/g, '""') + '"' + ',':',';
+                                }else{
+                                    row += gchild[col] ? gchild[col] + ',':',';
+                                }
+                            },me)
+                            CSV += row + '\r\n';                             
+                        });
+                    }
+                },me);
+            }
+        },me);
+
+        me.CSV = CSV;
+        me.setLoading(false);
+        //me.logger.log(CSV);
+    },
+
+    getOptions: function() {
+        return [
+            {
+                text: 'About...',
+                handler: this._launchInfo,
+                scope: this
+            }
+        ];
+    },
+    
+    _launchInfo: function() {
+        if ( this.about_dialog ) { this.about_dialog.destroy(); }
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+    },
+    
+    isExternal: function(){
+        return typeof(this.getAppId()) == 'undefined';
+    }
+    
+});
+
+            
+               Rally.launchApp('TSApp', {
+                   name: 'Track Team Status'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+    </style>
+
+</head>
+<body></body>
+</html>
