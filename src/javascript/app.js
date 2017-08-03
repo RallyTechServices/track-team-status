@@ -7,6 +7,7 @@ Ext.define('TSModel', {
         { name: 'Name', type:'string' },
         { name: 'WorkProduct', type:'string' },
         { name: 'WorkProductID', type:'string' },
+        { name: 'Release', type:'string' },
         { name: 'State', type:'string' },
         { name: 'PercentageUsedEstimate', type:'number' },
         { name: 'PercentageUsedToDo', type:'number' },
@@ -121,7 +122,7 @@ Ext.define("TSApp", {
 
         var task_config = {
             model: 'Task',
-            fetch: ['ObjectID','FormattedID','Name','Project','State','Owner','WorkProduct','ToDo','Estimate','Actuals','Iteration','UserIterationCapacities','DisplayName',"FirstName",'LastName'],
+            fetch: ['ObjectID','FormattedID','Name','Project','State','Owner','WorkProduct','ToDo','Release','Estimate','Actuals','Iteration','UserIterationCapacities','DisplayName',"FirstName",'LastName'],
             filters: task_filters,
             context: {
                 projectScopeUp: false
@@ -148,75 +149,6 @@ Ext.define("TSApp", {
         Deft.Promise.all([me._loadAStoreWithAPromise(task_config),me._loadAStoreWithAPromise(uic_config)],me).then({
             scope: me,
             success: function(results) {
-                
-                // //process results to create a custom grid. 
-
-                // var tasks = [];
-                // //var hash = {},
-                // var totalCapacity = 0;
-                // var totalEstimate = 0;
-                // var totalToDo = 0;
-                // var totalActuals = 0;
-                // // me.logger.log('uic',results[1]);
-
-                // var uic_hash = {};
-                // //var teamExists = null;
-                // Ext.Array.each(results[1],function(uic){
-                //     var userName = uic.get('User')  ? ((uic.get('User').FirstName ? uic.get('User').FirstName : "" ) + " " + (uic.get('User').LastName ? uic.get('User').LastName.slice(0,1) : "" )) : "No Owner Entry";
-                //     if(" "==userName){
-                //         userName = uic.get('User')._refObjectName;
-                //     }                    
-
-                //     totalCapacity += uic.get('Capacity');
-                //     if(uic_hash[uic.get('Project').Name]){
-                //         uic_hash[uic.get('Project').Name].Users.push({
-                //                                                         User: userName,
-                //                                                         children:[],
-                //                                                         Capacity: uic.get('Capacity'),
-                //                                                         Estimate: 0,
-                //                                                         ToDo: 0,
-                //                                                         Actuals: 0,
-                //                                                         PercentageUsedEstimate: 0,
-                //                                                         PercentageUsedToDo: 0,
-                //                                                         PercentageUsedActuals: 0
-                //                                                     });
-                //     }else{
-                //         uic_hash[uic.get('Project').Name] = {
-                //             Team: uic.get('Project').Name,
-                //             ObjectID: uic.get('Project').ObjectID,
-                //             Users: [{
-                //                         User: userName,
-                //                         children:[],
-                //                         Capacity: uic.get('Capacity'),
-                //                         Estimate: 0,
-                //                         ToDo: 0,
-                //                         Actuals: 0,
-                //                         PercentageUsedEstimate: 0,
-                //                         PercentageUsedToDo: 0,
-                //                         PercentageUsedActuals: 0
-                //                     }]
-                //         };
-                //     }
-
-
-                // });
-
-                // me.uic_hash = uic_hash;
-                // // me.logger.log('uic_hash',uic_hash);
-
-                // Ext.Array.each(Ext.Object.getKeys(uic_hash),function(team){
-                //     tasks.push({
-                //         Team: team,
-                //         children: me.uic_hash[team].Users,
-                //         Capacity: 0,
-                //         Estimate: 0,
-                //         ToDo: 0,
-                //         Actuals: 0,
-                //         PercentageUsedEstimate: 0,
-                //         PercentageUsedToDo: 0,
-                //         PercentageUsedActuals: 0
-                //     });
-                // });
 
                 //process results to create a custom grid. 
 
@@ -291,6 +223,11 @@ Ext.define("TSApp", {
 
                 Ext.Array.each(results[0],function(task){
 
+                    var userName = task.get('Owner')  ? ((task.get('Owner').FirstName ? task.get('Owner').FirstName : "" ) + " " + (task.get('Owner').LastName ? task.get('Owner').LastName.slice(0,1) : "" )) : "No Owner Entry";
+                    if(" "==userName){
+                        userName = task.get('Owner')._refObjectName;
+                    }                    
+
                     totalToDo = totalToDo + (task.get('ToDo') > 0 ? task.get('ToDo'):0);
                     totalEstimate = totalEstimate + (task.get('Estimate') > 0 ? task.get('Estimate'):0);
                     totalActuals = totalActuals + (task.get('Actuals') > 0 ? task.get('Actuals'):0);
@@ -310,11 +247,6 @@ Ext.define("TSApp", {
                     var userExists = null;
                     userExists = Ext.Array.filter(tasks, function(item) {
                         var teamExists = null;
-
-                    var userName = task.get('Owner')  ? ((task.get('Owner').FirstName ? task.get('Owner').FirstName : "" ) + " " + (task.get('Owner').LastName ? task.get('Owner').LastName.slice(0,1) : "" )) : "No Owner Entry";
-                    if(" "==userName){
-                        userName = task.get('Owner')._refObjectName;
-                    }
 
                         if(item.User == userName){
 
@@ -358,7 +290,7 @@ Ext.define("TSApp", {
 
                     if(userExists.length < 1){
 
-                        Ext.Array.each(me.uic_hash[userName].Projects,function(project){
+                        Ext.Array.each(me.uic_hash[userName] && me.uic_hash[userName].Projects,function(project){
                             if(project.Project == task.get('Project').Name){
                                 project.children.push(me._getLeafNode(task));
                                 project.Capacity = capacity;
@@ -372,7 +304,7 @@ Ext.define("TSApp", {
                         })
                         task = {
                             User: userName,
-                            children: me.uic_hash[userName].Projects,
+                            children: me.uic_hash[userName] && me.uic_hash[userName].Projects || [],
                             Capacity: 0,
                             Estimate: task.get('Estimate'),
                             ToDo: task.get('ToDo'),
@@ -409,7 +341,7 @@ Ext.define("TSApp", {
                                 model: 'TSModel',
                                 root: {
                                     expanded: true,
-                                    Team: me.topProject,
+                                    User: me.topProject,
                                     children: tasks,
                                     Capacity: totalCapacity,
                                     Estimate: totalEstimate,
@@ -443,6 +375,7 @@ Ext.define("TSApp", {
                     FormattedID: task.get('FormattedID'),
                     WorkProduct: task.get('WorkProduct').Name,
                     WorkProductID: task.get('WorkProduct').FormattedID,
+                    Release: task.get('WorkProduct').Release && task.get('WorkProduct').Release.Name,
                     State: task.get('State'),
                     Estimate: task.get('Estimate'),
                     ToDo: task.get('ToDo'),
@@ -507,13 +440,13 @@ Ext.define("TSApp", {
         var columns =  [
                         {
                             xtype:'treecolumn',
-                            text: 'Team', 
-                            dataIndex: 'Team',
+                            text: 'User', 
+                            dataIndex: 'User',
                             flex: 3
                         },
                         {
-                            text: 'User', 
-                            dataIndex: 'User',
+                            text: 'Team', 
+                            dataIndex: 'Team',
                             flex: 3
                         },
                         {
@@ -538,6 +471,11 @@ Ext.define("TSApp", {
                         {
                             text: 'Task State', 
                             dataIndex: 'State',
+                            flex: 2
+                        },                        
+                        {
+                            text: 'Release', 
+                            dataIndex: 'Release',
                             flex: 2
                         },
                         {
@@ -594,40 +532,41 @@ Ext.define("TSApp", {
                                 return ToDo //> 0 ? ToDo:0;
                             },
                             flex: 1
-                        },{
-                            text: '% Used <BR>(Estimate)',
-                            dataIndex: 'PercentageUsedEstimate',
-                            renderer: function(PercentageUsedEstimate,metaData,record){
-                                if(record.get('Team') == me.context.getProject().Name ){
-                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
-                                }                                
-                                if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
-                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
-                                }
-                                if(record.get('User')!=""){
-                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
-                                }                              
-                                return PercentageUsedEstimate + '%';
-                            },
-                            flex: 1
-                        },
-                        {
-                            text: '% Used <BR>(To Do)',
-                            dataIndex: 'PercentageUsedToDo',
-                            renderer: function(PercentageUsedToDo,metaData,record){
-                                if(record.get('Team') == me.context.getProject().Name ){
-                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
-                                }                                
-                                if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
-                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
-                                }
-                                if(record.get('User')!=""){
-                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
-                                }                              
-                                return PercentageUsedToDo  + '%';
-                            },
-                            flex: 1
                         }
+                        // ,{
+                        //     text: '% Used <BR>(Estimate)',
+                        //     dataIndex: 'PercentageUsedEstimate',
+                        //     renderer: function(PercentageUsedEstimate,metaData,record){
+                        //         if(record.get('Team') == me.context.getProject().Name ){
+                        //             metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
+                        //         }                                
+                        //         if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
+                        //             metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
+                        //         }
+                        //         if(record.get('User')!=""){
+                        //             metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
+                        //         }                              
+                        //         return PercentageUsedEstimate + '%';
+                        //     },
+                        //     flex: 1
+                        // },
+                        // {
+                        //     text: '% Used <BR>(To Do)',
+                        //     dataIndex: 'PercentageUsedToDo',
+                        //     renderer: function(PercentageUsedToDo,metaData,record){
+                        //         if(record.get('Team') == me.context.getProject().Name ){
+                        //             metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
+                        //         }                                
+                        //         if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
+                        //             metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
+                        //         }
+                        //         if(record.get('User')!=""){
+                        //             metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
+                        //         }                              
+                        //         return PercentageUsedToDo  + '%';
+                        //     },
+                        //     flex: 1
+                        // }
             ];
 
             if(me.getSetting('showActuals')){
@@ -649,23 +588,23 @@ Ext.define("TSApp", {
                     flex: 1
                 });
 
-                columns.push({
-                            text: '% Used <BR>(Actuals)',
-                            dataIndex: 'PercentageUsedActuals',
-                            renderer: function(PercentageUsedActuals,metaData,record){
-                                if(record.get('Team') == me.context.getProject().Name ){
-                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
-                                }                                
-                                if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
-                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
-                                }
-                                if(record.get('User')!=""){
-                                    metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
-                                }                              
-                                return PercentageUsedActuals  + '%';
-                            },
-                            flex: 1
-                        });
+                // columns.push({
+                //             text: '% Used <BR>(Actuals)',
+                //             dataIndex: 'PercentageUsedActuals',
+                //             renderer: function(PercentageUsedActuals,metaData,record){
+                //                 if(record.get('Team') == me.context.getProject().Name ){
+                //                     metaData.style = 'font-weight: bold;font-style: italic;background-color:#A9A9A9;';                                
+                //                 }                                
+                //                 if(record.get('Team')!="" && record.get('Team') != me.context.getProject().Name ){
+                //                     metaData.style = 'font-weight: bold;font-style: italic;background-color:#C0C0C0;';                                
+                //                 }
+                //                 if(record.get('User')!=""){
+                //                     metaData.style = 'font-weight: bold;font-style: italic;background-color:#D3D3D3;';                                
+                //                 }                              
+                //                 return PercentageUsedActuals  + '%';
+                //             },
+                //             flex: 1
+                //         });
             }
 
             return columns;
