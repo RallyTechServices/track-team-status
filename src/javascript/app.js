@@ -66,7 +66,9 @@ Ext.define("TSApp", {
 
     launch: function() {
         var me = this;
-        me._addSelector();
+        me._addSelector();        
+
+
     },
       
     _addSelector: function() {
@@ -86,8 +88,21 @@ Ext.define("TSApp", {
                 scope: me,
                 change: function(icb) {
                     me.iteration = icb;
-                    me._queryAndDisplayGrid();
+                    var user_filters = [{property:'TeamMemberships',value: me.getContext().getProject()._ref}, {property:'Disabled', operator:'!=' ,value: true}];
+                    var user_config = {
+                        model: 'User',
+                        fetch: ['ObjectID','Name'],
+                        filters: user_filters,
+                        limit: 'Infinity'
+                    };
 
+                    me._loadAStoreWithAPromise(user_config).then({
+                        success: function(results){
+                            me.users = results;
+                            console.log('Users for the current project',results);
+                            me._queryAndDisplayGrid();
+                        }
+                    });
                 }
             }
         });
@@ -118,13 +133,27 @@ Ext.define("TSApp", {
 
         var iteration_name = me.iteration.rawValue;
 
-        var task_filters = [{property:'Iteration.Name',value: iteration_name}];
+        var task_filters = Ext.create('Rally.data.wsapi.Filter', {
+             property: 'Iteration.Name',
+             operator: '=',
+             value: iteration_name
+        });
 
+        var uic_user_filter = [];  
+        var task_owner_filter = [];
+
+        Ext.Array.each(me.users,function(user){
+            uic_user_filter.push({property : 'User.ObjectID', value: user.get('ObjectID')});
+        });
+
+        Ext.Array.each(me.users,function(user){
+            task_owner_filter.push({property : 'Owner.ObjectID', value: user.get('ObjectID')});
+        });
 
         var task_config = {
             model: 'Task',
             fetch: ['ObjectID','FormattedID','Name','Project','State','Owner','WorkProduct','ToDo','TimeSpent','Release','Estimate','Actuals','Iteration','UserIterationCapacities','DisplayName',"FirstName",'LastName'],
-            filters: task_filters,
+            filters: Rally.data.wsapi.Filter.or(task_owner_filter).and(task_filters),
             context: {
                 projectScopeUp: false
                 ,
@@ -137,7 +166,7 @@ Ext.define("TSApp", {
         var uic_config = {
             model: 'UserIterationCapacity',
             fetch: ['ObjectID','FormattedID','Name','Project','Iteration','Capacity','User','DisplayName',"FirstName",'LastName'],
-            filters: task_filters,
+            filters: Rally.data.wsapi.Filter.or(uic_user_filter).and(task_filters),
             context: {
                 projectScopeUp: false
                 ,
@@ -164,26 +193,35 @@ Ext.define("TSApp", {
 
                 var uic_hash = {};
                 //var teamExists = null;
-                Ext.Array.each(results[1],function(uic){
-                    var userName = uic.get('User')  ? ((uic.get('User').FirstName ? uic.get('User').FirstName : "" ) + " " + (uic.get('User').LastName ? uic.get('User').LastName.slice(0,1) : "" )) : "No Owner Entry";
-                    if(" "==userName){
-                        userName = uic.get('User')._refObjectName;
-                    }                    
 
+                Ext.Array.each(me.users,function(user){
+                    var userName = user.get('FirstName') || user.get('LastName') ? user.get('FirstName') + " " + user.get('LastName') : user.get('_refObjectName');
+                    uic_hash[userName] = {
+                            User: userName,
+                            ObjectID: user.get('ObjectID'),
+                            Projects:[]
+                    };
+                });
+                
+                console.log('All users>>', uic_hash);
+
+                Ext.Array.each(results[1],function(uic){
+                    var userName = uic.get('User')  ? (uic.get('User').FirstName || uic.get('User').LastName  ? uic.get('User').FirstName  + " " + uic.get('User').LastName  : uic.get('User')._refObjectName) : "No Owner Entry";
+               
                     totalCapacity += uic.get('Capacity');
                     if(uic_hash[userName]){
                         uic_hash[userName].Projects.push({
-                                                                        Project: uic.get('Project').Name,
-                                                                        children:[],
-                                                                        Capacity: uic.get('Capacity'),
-                                                                        Estimate: 0,
-                                                                        ToDo: 0,
-                                                                        TimeSpent:0,
-                                                                        Actuals: 0,
-                                                                        PercentageUsedEstimate: 0,
-                                                                        PercentageUsedToDo: 0,
-                                                                        PercentageUsedActuals: 0
-                                                                    });
+                                        Project: uic.get('Project').Name,
+                                        children:[],
+                                        Capacity: uic.get('Capacity'),
+                                        Estimate: 0,
+                                        ToDo: 0,
+                                        TimeSpent:0,
+                                        Actuals: 0,
+                                        PercentageUsedEstimate: 0,
+                                        PercentageUsedToDo: 0,
+                                        PercentageUsedActuals: 0
+                                    });
                     }else{
                         uic_hash[userName] = {
                             User: userName,
